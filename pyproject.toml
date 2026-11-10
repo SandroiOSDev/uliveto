@@ -1,0 +1,15 @@
+[project]
+name = "uliveto"
+version = "0.1.0"
+description = "Registro locale per osservare gli ulivi e pianificare gli interventi"
+requires-python = ">=3.10"
+
+[project.scripts]
+uliveto = "uliveto.app:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["uliveto*"]

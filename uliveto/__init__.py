@@ -1,0 +1,1 @@
+"""Registro locale degli ulivi."""
