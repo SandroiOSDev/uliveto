@@ -42,6 +42,29 @@ CREATE TABLE IF NOT EXISTS activities (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS activities_tree_date ON activities(tree_id, done_on DESC, id DESC);
+CREATE TABLE IF NOT EXISTS stations (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    parcel TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    depth_cm INTEGER,
+    mode TEXT NOT NULL CHECK (mode IN ('synthetic', 'real')),
+    dry_threshold REAL NOT NULL DEFAULT 20 CHECK (dry_threshold >= 0 AND dry_threshold <= 100),
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS readings (
+    id INTEGER PRIMARY KEY,
+    station_id INTEGER NOT NULL REFERENCES stations(id) ON DELETE CASCADE,
+    measured_at TEXT NOT NULL,
+    moisture_pct REAL NOT NULL CHECK (moisture_pct >= 0 AND moisture_pct <= 100),
+    temperature_c REAL CHECK (temperature_c >= -40 AND temperature_c <= 80),
+    source TEXT NOT NULL CHECK (source IN ('synthetic', 'real')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(station_id, measured_at, source)
+);
+CREATE INDEX IF NOT EXISTS readings_station_time ON readings(station_id, measured_at DESC, id DESC);
 """
 
 

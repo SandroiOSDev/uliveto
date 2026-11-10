@@ -1,18 +1,21 @@
 import re
+import json
 import tempfile
 import threading
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from http.server import ThreadingHTTPServer
 
-from uliveto import db
+from uliveto import db, sensors
 from uliveto.app import AppHandler
 
 
 TREE = {"code": "A-01", "cultivar": "Leccino", "parcel": "Terrazza nord", "latitude": "40.12", "longitude": "18.44", "planted_year": "2010", "notes": "Vicino al muretto"}
+STATION = {"code": "NORD-01", "parcel": "Terrazza nord", "latitude": "40.12", "longitude": "18.44", "depth_cm": "30", "mode": "synthetic", "dry_threshold": "25", "notes": "Punto centrale"}
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -52,11 +55,41 @@ class DatabaseTests(unittest.TestCase):
             with self.assertRaisesRegex(db.ValidationError, "Descrizione"):
                 db.add_activity(conn, 1, {"done_on": "2026-01-10", "kind": "potatura", "notes": ""})
 
+    def test_synthetic_to_real_keeps_sources_separate(self):
+        with db.connect(self.path) as conn:
+            db.save_tree(conn, TREE)
+            station_id = sensors.save_station(conn, STATION)
+            self.assertEqual(sensors.generate_synthetic(conn, station_id), 15)
+            self.assertEqual(sensors.generate_synthetic(conn, station_id), 0)
+            self.assertEqual(len(sensors.recent_readings(conn, station_id, "synthetic")), 15)
+            self.assertEqual(sensors.list_stations(conn)[0]["tree_count"], 1)
+            sensors.save_station(conn, {**STATION, "mode": "real"}, station_id)
+            self.assertIsNone(sensors.list_stations(conn)[0]["latest_moisture"])
+            self.assertEqual(sensors.status(sensors.list_stations(conn)[0]), "Senza dati")
+            payload = {"station_code": "NORD-01", "measured_at": datetime.now(timezone.utc).isoformat(), "moisture_pct": 16.4, "temperature_c": 19.2}
+            self.assertTrue(sensors.add_reading(conn, payload))
+            self.assertFalse(sensors.add_reading(conn, payload))
+            self.assertEqual(sensors.status(sensors.list_stations(conn)[0]), "Sotto soglia")
+            self.assertEqual(len(sensors.recent_readings(conn, station_id, "synthetic")), 15)
+            with self.assertRaisesRegex(db.ValidationError, "modalità"):
+                sensors.generate_synthetic(conn, station_id)
+
+    def test_invalid_sensor_readings(self):
+        with db.connect(self.path) as conn:
+            sensors.save_station(conn, {**STATION, "mode": "real"})
+            base = {"station_code": "NORD-01", "measured_at": datetime.now(timezone.utc).isoformat(), "moisture_pct": 22}
+            with self.assertRaisesRegex(db.ValidationError, "fuso orario"):
+                sensors.add_reading(conn, {**base, "measured_at": "2026-01-01T10:00:00"})
+            with self.assertRaisesRegex(db.ValidationError, "intervallo"):
+                sensors.add_reading(conn, {**base, "moisture_pct": 101})
+            with self.assertRaisesRegex(db.ValidationError, "intervallo"):
+                sensors.add_reading(conn, {**base, "moisture_pct": "NaN"})
+
 
 class HttpTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        handler = type("TestHandler", (AppHandler,), {"database": Path(self.temp.name) / "app.sqlite3", "csrf_token": "test-token"})
+        handler = type("TestHandler", (AppHandler,), {"database": Path(self.temp.name) / "app.sqlite3", "csrf_token": "test-token", "ingest_token": "ingest-test-token"})
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -110,6 +143,42 @@ class HttpTests(unittest.TestCase):
         listing = self.get("/")
         self.assertNotIn("<script>", listing)
         self.assertIn("&lt;script&gt;", listing)
+
+    def test_sensor_dashboard_and_real_ingest(self):
+        response = self.post("/sensors/new", {**STATION, "csrf": "test-token"})
+        self.assertEqual(response.code, 303)
+        response.close()
+        self.assertIn("Dati sintetici", self.get("/sensors"))
+        response = self.post("/sensors/1/generate", {"csrf": "test-token"})
+        self.assertEqual(response.code, 303)
+        response.close()
+        self.assertIn("15 letture", self.get("/sensors/1"))
+        response = self.post("/sensors/1/edit", {**STATION, "mode": "real", "csrf": "test-token"})
+        self.assertEqual(response.code, 303)
+        response.close()
+        self.assertIn("Nessuna lettura per questa modalità", self.get("/sensors/1"))
+        payload = {"station_code": "NORD-01", "measured_at": datetime.now(timezone.utc).isoformat(), "moisture_pct": 18.5, "temperature_c": 20.1}
+        url = self.base + "/api/v1/readings"
+        def send(token):
+            request = Request(url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"}, method="POST")
+            try:
+                return self.opener.open(request)
+            except HTTPError as exc:
+                return exc
+        response = send("wrong")
+        self.assertEqual(response.code, 401)
+        response.close()
+        response = send("ingest-test-token")
+        self.assertEqual(response.code, 201)
+        response.close()
+        response = send("ingest-test-token")
+        self.assertEqual(response.code, 200)
+        response.close()
+        self.assertIn("Sotto soglia", self.get("/sensors/1"))
+        self.assertIn("18.5%", self.get("/sensors"))
+        exported = self.get("/sensors/export")
+        self.assertIn("NORD-01,Terrazza nord,real", exported)
+        self.assertIn("NORD-01,Terrazza nord,synthetic", exported)
 
 
 if __name__ == "__main__":

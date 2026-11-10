@@ -1,0 +1,30 @@
+.sensor-hero{background:linear-gradient(115deg,#e6eadb,#edf1eb)}
+.sensor-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 34px}
+.sensor-stats>div{background:white;border:1px solid var(--line);border-radius:14px;padding:21px;display:flex;flex-direction:column;gap:5px}
+.sensor-stats strong{font:normal 31px Georgia,serif}
+.sensor-stats span{color:var(--muted);font-size:13px}
+.sensor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.sensor-card{display:block;background:white;border:1px solid var(--line);border-radius:16px;padding:22px;color:var(--dark)}
+.sensor-card:hover{text-decoration:none;border-color:#abc2ac;box-shadow:0 6px 22px #254b3512}
+.sensor-card-top,.sensor-card-foot{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.sensor-card-top small,.sensor-card-foot small{color:var(--muted);font-size:12px}
+.sensor-card h3{font:normal 24px Georgia,serif;margin:6px 0 0}
+.sensor-card .badge{margin:0}
+.sensor-reading{display:flex;align-items:baseline;gap:10px;margin:22px 0 7px}
+.sensor-reading strong{font:normal 34px Georgia,serif}
+.sensor-reading span{font-size:12px;color:var(--muted)}
+.sparkline{display:block;width:100%;height:110px}
+.chart-empty{height:110px;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center}
+.sensor-card-foot{align-items:center;border-top:1px solid var(--line);padding-top:14px;margin-top:12px}
+.sensor-status{font-size:12px;font-weight:700}
+.sensor-status.alert{color:#a3433e}.sensor-status.good{color:#2b7145}.sensor-status.muted{color:#7a817a}
+.chart-panel{padding:18px}.chart-panel p{color:var(--muted);font-size:12px;line-height:1.5;margin:6px 0 0}
+.readings-head{margin-top:28px}
+.table-wrap{overflow-x:auto}
+.table-wrap table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+.table-wrap th,.table-wrap td{text-align:left;border-bottom:1px solid var(--line);padding:13px 16px}
+.table-wrap th{color:var(--muted);font-weight:700}
+.table-wrap tr:last-child td{border-bottom:0}
+.forms-column .form-panel>p,.api-hint{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
+code{background:#eff2eb;border-radius:4px;padding:2px 4px}
+@media(max-width:700px){.sensor-stats{grid-template-columns:repeat(2,1fr)}.sensor-grid{grid-template-columns:1fr}}

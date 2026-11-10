@@ -1,8 +1,8 @@
 # Uliveto
 
-Uliveto è un piccolo registro personale per seguire gli alberi del proprio uliveto. Ogni pianta ha una scheda con codice, cultivar, zona e coordinate facoltative. Visite e interventi finiscono in una cronologia unica; il cruscotto mostra l'ultimo stato di salute registrato per ogni albero.
+Uliveto è un registro personale per seguire gli alberi e il terreno del proprio uliveto. Ogni pianta ha una scheda con codice, cultivar, zona e coordinate facoltative. Visite e interventi finiscono in una cronologia unica; la dashboard sensori mostra umidità e temperatura nei punti strategici del terreno.
 
-È un progetto in sviluppo attivo, nato per essere usato sul campo con dati reali. La prima versione privilegia la registrazione affidabile delle informazioni e l'esportazione, senza account né servizi esterni.
+È un progetto in sviluppo attivo, nato per essere usato sul campo. Si possono generare letture sintetiche, chiaramente identificate, per provare il flusso iniziale. Una piccola API locale riceve poi letture reali da un gateway quando i sensori saranno installati.
 
 ## Avvio
 
@@ -24,9 +24,17 @@ python3 -m uliveto.app --db /percorso/privato/uliveto.sqlite3 --port 8765
 - Aggiungere osservazioni periodiche con data, stato di salute, sintomi e note.
 - Annotare potature, irrigazioni, concimazioni, trattamenti, raccolte e altri interventi.
 - Consultare lo storico cronologico di ciascun albero e filtrare il registro per stato.
-- Esportare tutti i dati in un unico CSV leggibile anche da un foglio di calcolo.
+- Registrare punti di misura per zona, profondità e soglia di umidità; vedere andamento, letture recenti e segnali sotto soglia o non aggiornati.
+- Generare sette giorni di letture sintetiche per un punto e passarlo poi alla modalità reale senza confondere le due origini.
+- Esportare separatamente anagrafica/storico degli ulivi e letture dei sensori in CSV.
 
-Non ci sono dati di esempio: il registro parte vuoto. Le coordinate, quando presenti, aprono OpenStreetMap in una nuova scheda.
+Non ci sono dati di esempio precaricati: il registro parte vuoto. La simulazione parte solo quando premi il pulsante sul punto di misura. Le coordinate, quando presenti nelle schede degli ulivi, aprono OpenStreetMap in una nuova scheda.
+
+## Sensori e dati reali
+
+Per ogni punto di misura scegli un codice stabile e la stessa zona usata nelle schede degli ulivi. L'associazione è per zona: un punto può rappresentare più alberi. La soglia è configurabile, ma va calibrata sul sensore e sul terreno. Un valore sotto soglia segnala un controllo da fare: **non è una diagnosi della salute dell'albero**.
+
+Il percorso per collegare un gateway locale, il formato JSON, l'autenticazione e la migrazione sono descritti in [docs/sensors.md](docs/sensors.md). L'API di acquisizione è disabilitata finché non viene configurato `ULIVETO_INGEST_TOKEN`.
 
 ## Dati e backup
 
@@ -44,12 +52,13 @@ python3 -m unittest discover -s tests -v
 
 - `uliveto/db.py`: schema SQLite, validazioni e query.
 - `uliveto/app.py`: server HTTP locale, pagine e esportazione CSV.
-- `uliveto/static/style.css`: interfaccia adattiva.
+- `uliveto/sensors.py`: punti di misura, validazioni e generazione sintetica.
+- `uliveto/static/`: interfaccia adattiva.
 - `tests/`: test dei flussi dati e dei principali vincoli.
 
 ## Prossimi passi
 
-La priorità dopo l'uso reale è rendere più rapida la registrazione sul campo da telefono, aggiungere foto alle osservazioni e una vista della mappa. Le scelte dipenderanno da ciò che risulterà utile nell'uliveto, senza introdurre funzionalità fittizie.
+La priorità dopo la prova con dati sintetici è scegliere hardware e protocollo del gateway, calibrare le soglie per il terreno reale e verificare le misure con osservazioni sul campo. Per un accesso da telefono fuori dal computer serviranno hosting, autenticazione e una connessione sicura; questa versione locale non li include.
 
 ## Licenza
 
